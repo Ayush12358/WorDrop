@@ -92,7 +92,15 @@ class TriggerWordRepository {
   Future<void> _migrateLegacy(SharedPreferences prefs) async {
     final oldList = prefs.getStringList(_kLegacyTriggerWordsKey) ?? [];
     final newConfigs = oldList
-        .map((w) => TriggerConfig(label: w, triggers: [w]))
+        .map(
+          (w) => TriggerConfig(
+            label: w,
+            triggers: [w],
+            actions: [
+              ActionInstance.create(ActionType.vibrate),
+            ], // Default migration action
+          ),
+        )
         .toList();
     final encoded = jsonEncode(newConfigs.map((e) => e.toJson()).toList());
     await prefs.setString(_kTriggerConfigsKey, encoded);

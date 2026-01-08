@@ -51,6 +51,30 @@ WorDrop requires the following permissions to function:
 *   `Vibration`: For haptic feedback.
 *   `Overlay` (System Alert Window): For certain background interactions.
 
+
+## Roadmap & Development Phases
+
+### ✅ Phase 1: V1 Release (Current)
+- [x] **Core**: Offline Speech Recognition (Vosk), Background Service.
+- [x] **UI**: Trigger Management, Sensitivity Settings.
+- [x] **Actions**:
+    - [x] Media Control (Pause).
+    - [x] Haptics & Visual (Vibrate, Flash).
+    - [x] Safety (Loud Siren, Fake Call, Emergency SMS).
+    - [x] Automation (Launch App).
+- [x] **Infrastructure**: CI/CD Workflows, Unit Tests.
+
+### 🚧 Revised V2: Advanced Safety & Accessibility (Next)
+- [ ] **Audio Record**: Stealthily record audio on trigger.
+- [ ] **Lock Device**: Lock screen immediately (requires Accessibility Service).
+- [ ] **Data Privacy Mode**: "Incognito" trigger that clears recent app history/keyboard cache.
+
+### 🔮 Phase 3: Future & Community
+- [ ] **Two-Factor Trigger**: Require physical button combo + voice trigger.
+- [ ] **Smart Home Integration**: Local webhook calls (e.g., Home Assistant).
+- [ ] **Wear OS Companion**: Trigger from watch.
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+

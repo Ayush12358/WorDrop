@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 
 class FakeCallScreen extends StatefulWidget {
   final String callerName;
@@ -11,8 +11,6 @@ class FakeCallScreen extends StatefulWidget {
 }
 
 class _FakeCallScreenState extends State<FakeCallScreen> {
-  final AudioPlayer _player = AudioPlayer();
-
   @override
   void initState() {
     super.initState();
@@ -20,17 +18,17 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
   }
 
   void _startRinging() async {
-    // Loop ringtone
-    // await _player.play(AssetSource('sounds/ringtone.mp3')); // Assume we have one or use system?
-    // For now just vibrate
+    // Vibrate
     if (await Vibration.hasVibrator()) {
-      Vibration.vibrate(pattern: [0, 1000, 1000], repeat: 0);
+      Vibration.vibrate(pattern: [0, 1000, 1000], repeat: 1);
     }
+    // Play Ringtone
+    FlutterRingtonePlayer().playRingtone(looping: true);
   }
 
   @override
   void dispose() {
-    _player.stop();
+    FlutterRingtonePlayer().stop();
     Vibration.cancel();
     super.dispose();
   }

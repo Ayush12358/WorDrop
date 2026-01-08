@@ -343,6 +343,70 @@ class _TriggerScreenState extends State<TriggerScreen> {
     );
   }
 
+  void _showSmsDialog(BuildContext context, Function(ActionInstance) onAdd) {
+    final phoneController = TextEditingController();
+    final messageController = TextEditingController(
+      text: "Help! I triggered my emergency SOS.",
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text("Configure SOS SMS"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(
+                  labelText: "Phone Number",
+                  hintText: "+1234567890",
+                  prefixIcon: Icon(Icons.phone),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: messageController,
+                decoration: const InputDecoration(
+                  labelText: "Custom Message",
+                  prefixIcon: Icon(Icons.message),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                "Note: Standard SMS rates apply. Location will be appended if permission is granted.",
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                if (phoneController.text.isNotEmpty) {
+                  onAdd(
+                    ActionInstance.create(ActionType.emergencySms, {
+                      'phone': phoneController.text.trim(),
+                      'message': messageController.text.trim(),
+                    }),
+                  );
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text("Add SOS"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showAppSelectionDialog(
     BuildContext context,
     Function(ActionInstance) onAdd,
@@ -409,8 +473,6 @@ class _TriggerScreenState extends State<TriggerScreen> {
         return Icons.call;
       case ActionType.launchApp:
         return Icons.apps;
-      default:
-        return Icons.help;
     }
   }
 

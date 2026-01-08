@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart'; // For Clipboard
-import 'package:audioplayers/audioplayers.dart' hide AVAudioSessionCategory;
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:device_apps/device_apps.dart';
 import 'package:telephony/telephony.dart';
@@ -14,7 +15,6 @@ import '../repositories/trigger_word_repository.dart';
 
 class ActionService {
   final TriggerWordRepository _triggerRepository = TriggerWordRepository();
-  final AudioPlayer _audioPlayer = AudioPlayer(); // For Siren
   final Telephony _telephony = Telephony.instance;
 
   ActionService();
@@ -70,23 +70,12 @@ class ActionService {
             );
           }
           break;
-          break;
         case ActionType.fakeCall:
-          // We need a GlobalKey<NavigatorState> to navigate from Background Service?
-          // Background service can't navigate easily.
-          // WorDrop is mostly foreground or background service.
-          // For now, invoking native intent is best, but since current app is Flutter:
-          // We will rely on "Launch App" behavior OR try to bring app to front.
-
-          // Simpler approach for prototype:
-          // If app is in foreground, navigate.
-          // If background, show notification to tap?
-
-          // Let's implement basics: Just generic "System Alert Window" style later.
-          // For now, we reuse the context if available?? No context here.
+          FlutterBackgroundService().invoke("fakeCall", {
+            "name": "Potential Harm",
+          });
           break;
         case ActionType.lockDevice:
-        default:
           break;
       }
     }
@@ -157,13 +146,16 @@ class ActionService {
       // Max volume first?
       await FlutterVolumeController.setVolume(1.0);
 
-      // Play siren asset
-      await _audioPlayer.play(AssetSource('sounds/siren.mp3'));
+      // Play system alarm sound (looping)
+      FlutterRingtonePlayer().playAlarm();
 
-      // Stop after 10 seconds automatically?
+      // Stop after 10 seconds automatically
       await Future.delayed(const Duration(seconds: 10));
-      await _audioPlayer.stop();
-    } catch (_) {}
+      FlutterRingtonePlayer().stop();
+    } catch (_) {
+      // Ensure stop is called on error if possible
+      FlutterRingtonePlayer().stop();
+    }
   }
 
   Future<void> triggerLaunchApp(String packageName) async {

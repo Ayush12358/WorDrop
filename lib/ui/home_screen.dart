@@ -5,6 +5,7 @@ import '../services/background_service_manager.dart';
 import 'model_screen.dart';
 import 'trigger_screen.dart';
 import 'settings_screen.dart';
+import 'fake_call_screen.dart'; // Correctly placed import
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,6 +22,17 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _requestPermissions();
     checkServiceStatus();
+
+    // Listen for background events
+    FlutterBackgroundService().on('fakeCall').listen((event) {
+      if (mounted) {
+        final name = event?['name'] as String? ?? "Unknown";
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => FakeCallScreen(callerName: name)),
+        );
+      }
+    });
   }
 
   Future<void> _requestPermissions() async {
@@ -82,9 +94,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 backgroundColor: _isRunning ? Colors.red : Colors.green,
                 foregroundColor: Colors.white,
               ),
-              child: Text(
-                _isRunning ? 'STOP' : 'START',
-                style: const TextStyle(fontSize: 20),
+              child: Tooltip(
+                message: _isRunning
+                    ? "Stop listening service"
+                    : "Start listening service",
+                child: Text(
+                  _isRunning ? 'STOP' : 'START',
+                  style: const TextStyle(fontSize: 20),
+                ),
               ),
             ),
             const SizedBox(height: 40),
@@ -131,10 +148,13 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 40.0),
       child: SizedBox(
         width: double.infinity,
-        child: OutlinedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon),
-          label: Text(label),
+        child: Tooltip(
+          message: "Navigate to $label",
+          child: OutlinedButton.icon(
+            onPressed: onPressed,
+            icon: Icon(icon),
+            label: Text(label),
+          ),
         ),
       ),
     );

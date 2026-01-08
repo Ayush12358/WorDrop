@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import '../repositories/settings_repository.dart';
 
@@ -47,31 +48,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
-          RadioListTile<bool>(
+          ListTile(
             title: const Text("High Sensitivity (Fast)"),
             subtitle: const Text(
               "Triggers instantly as you speak. Best for responsiveness, but may have false positives.",
             ),
-            value: true,
-            groupValue: _highSensitivity,
-            onChanged: (val) async {
-              if (val != null) {
-                setState(() => _highSensitivity = val);
-                await _repository.setHighSensitivity(val);
+            leading: Radio<bool>(
+              value: true,
+              groupValue: _highSensitivity,
+              onChanged: (val) async {
+                if (val != null) {
+                  setState(() => _highSensitivity = val);
+                  await _repository.setHighSensitivity(val);
+                }
+              },
+            ),
+            onTap: () async {
+              if (_highSensitivity != true) {
+                setState(() => _highSensitivity = true);
+                await _repository.setHighSensitivity(true);
               }
             },
           ),
-          RadioListTile<bool>(
+          ListTile(
             title: const Text("High Accuracy (Strict)"),
             subtitle: const Text(
               "Waits for phrase completion. Slower, but significantly fewer false alarms.",
             ),
-            value: false,
-            groupValue: _highSensitivity,
-            onChanged: (val) async {
-              if (val != null) {
-                setState(() => _highSensitivity = val);
-                await _repository.setHighSensitivity(val);
+            leading: Radio<bool>(
+              value: false,
+              groupValue: _highSensitivity,
+              onChanged: (val) async {
+                if (val != null) {
+                  setState(() => _highSensitivity = val);
+                  await _repository.setHighSensitivity(val);
+                }
+              },
+            ),
+            onTap: () async {
+              if (_highSensitivity != false) {
+                setState(() => _highSensitivity = false);
+                await _repository.setHighSensitivity(false);
               }
             },
           ),
