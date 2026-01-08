@@ -1,0 +1,17 @@
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                if (namespace == null) {
+                    def defaultNamespace = project.group.toString().replace('-', '.')
+                    if (defaultNamespace.isEmpty() || defaultNamespace == "null") {
+                        defaultNamespace = "com.example.flutter_plugin"
+                    }
+                    def newNamespace = "${defaultNamespace}.${project.name.replace('-', '_')}"
+                    println "Fixing namespace for ${project.name}: $newNamespace"
+                    namespace newNamespace
+                }
+            }
+        }
+    }
+}
