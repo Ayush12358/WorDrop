@@ -1,5 +1,8 @@
 # WorDrop - Offline Personal Safety & Automation
 
+![Build Status](https://img.shields.io/github/actions/workflow/status/your-username/wordrop/build.yml?branch=main)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
+
 WorDrop is an offline, privacy-first Android application designed for personal safety, privacy, and automation. It continuously listens for custom "trigger words" (hotwords) and executes a configurable set of actions when detected.
 
 ## Key Features

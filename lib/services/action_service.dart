@@ -1,7 +1,9 @@
 import 'package:flutter/services.dart'; // For Clipboard
-import 'package:audioplayers/audioplayers.dart';
+import 'package:audioplayers/audioplayers.dart' hide AVAudioSessionCategory;
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:device_apps/device_apps.dart';
+import 'package:telephony/telephony.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'package:audio_session/audio_session.dart';
 import 'package:vibration/vibration.dart';
@@ -13,6 +15,7 @@ import '../repositories/trigger_word_repository.dart';
 class ActionService {
   final TriggerWordRepository _triggerRepository = TriggerWordRepository();
   final AudioPlayer _audioPlayer = AudioPlayer(); // For Siren
+  final Telephony _telephony = Telephony.instance;
 
   ActionService();
 
@@ -56,9 +59,33 @@ class ActionService {
             futures.add(triggerLaunchApp(action.params['package']));
           }
           break;
-        case ActionType.lockDevice:
-          // Requires Accessibility Service (Later)
+        case ActionType.emergencySms:
+          if (action.params.containsKey('phone')) {
+            futures.add(
+              triggerEmergencySms(
+                action.params['phone'],
+                action.params['message'] ??
+                    "Help! I triggered my emergency SOS.",
+              ),
+            );
+          }
           break;
+          break;
+        case ActionType.fakeCall:
+          // We need a GlobalKey<NavigatorState> to navigate from Background Service?
+          // Background service can't navigate easily.
+          // WorDrop is mostly foreground or background service.
+          // For now, invoking native intent is best, but since current app is Flutter:
+          // We will rely on "Launch App" behavior OR try to bring app to front.
+
+          // Simpler approach for prototype:
+          // If app is in foreground, navigate.
+          // If background, show notification to tap?
+
+          // Let's implement basics: Just generic "System Alert Window" style later.
+          // For now, we reuse the context if available?? No context here.
+          break;
+        case ActionType.lockDevice:
         default:
           break;
       }
@@ -143,5 +170,40 @@ class ActionService {
     try {
       await DeviceApps.openApp(packageName);
     } catch (_) {}
+  }
+
+  Future<void> triggerEmergencySms(String phone, String message) async {
+    try {
+      // 1. Get Location (if permission granted)
+      String locationSuffix = "";
+      // Check/Request permission is tricky in background context.
+      // We assume permissions are granted by user in App UI beforehand.
+      // But we can check status.
+      LocationPermission permission = await Geolocator.checkPermission();
+
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        try {
+          Position position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+            ),
+          );
+          locationSuffix =
+              "\n\nLocation: https://maps.google.com/?q=${position.latitude},${position.longitude}";
+        } catch (_) {}
+      }
+
+      final fullMessage = "$message$locationSuffix";
+
+      // 2. Send SMS (Background)
+      await _telephony.sendSms(
+        to: phone,
+        message: fullMessage,
+        isMultipart: true,
+      );
+    } catch (_) {
+      // print("SMS Failed");
+    }
   }
 }

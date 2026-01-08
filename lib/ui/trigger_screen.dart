@@ -317,12 +317,17 @@ class _TriggerScreenState extends State<TriggerScreen> {
       context: context,
       builder: (ctx) {
         return SimpleDialog(
-          title: const Text("Select Action"),
           children: ActionType.values.map((type) {
             return SimpleDialogOption(
               onPressed: () {
-                onAdd(ActionInstance.create(type));
                 Navigator.pop(ctx);
+                if (type == ActionType.launchApp) {
+                  _showAppSelectionDialog(context, onAdd);
+                } else if (type == ActionType.emergencySms) {
+                  _showSmsDialog(context, onAdd);
+                } else {
+                  onAdd(ActionInstance.create(type));
+                }
               },
               child: Row(
                 children: [
@@ -333,6 +338,50 @@ class _TriggerScreenState extends State<TriggerScreen> {
               ),
             );
           }).toList(),
+        );
+      },
+    );
+  }
+
+  void _showAppSelectionDialog(
+    BuildContext context,
+    Function(ActionInstance) onAdd,
+  ) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text("Enter App Package Name"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("e.g., com.spotify.music"),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(hintText: "Package Name"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                if (controller.text.isNotEmpty) {
+                  onAdd(
+                    ActionInstance.create(ActionType.launchApp, {
+                      'package': controller.text.trim(),
+                    }),
+                  );
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text("Add"),
+            ),
+          ],
         );
       },
     );
@@ -355,9 +404,9 @@ class _TriggerScreenState extends State<TriggerScreen> {
       case ActionType.loudSiren:
         return Icons.notifications_active;
       case ActionType.emergencySms:
-        return Icons.sms_failed; // Placeholder
+        return Icons.sms_failed;
       case ActionType.fakeCall:
-        return Icons.call; // Placeholder
+        return Icons.call;
       case ActionType.launchApp:
         return Icons.apps;
       default:
@@ -372,30 +421,10 @@ class _TriggerScreenState extends State<TriggerScreen> {
           RegExp(r'([a-z])([A-Z])'),
           (Match m) => "${m[1]} ${m[2]}",
         )
-        .replaceFirst(r'([a-z])', (Match m) => m[1]!.toUpperCase());
-    // Cheap camel case splitter: pauseMedia -> Pause Media currently manual mapping might be better if I want clean text
-    switch (type) {
-      case ActionType.pauseMedia:
-        return "Pause Media";
-      case ActionType.vibrate:
-        return "Vibrate";
-      case ActionType.flash:
-        return "Flash Light";
-      case ActionType.muteAll:
-        return "Mute All Audio";
-      case ActionType.clearClipboard:
-        return "Clear Clipboard";
-      case ActionType.lockDevice:
-        return "Lock Device";
-      case ActionType.loudSiren:
-        return "Play Siren";
-      case ActionType.emergencySms:
-        return "Sending SMS (Coming Soon)";
-      case ActionType.fakeCall:
-        return "Fake Call (Coming Soon)";
-      case ActionType.launchApp:
-        return "Launch App (Basic)";
-    }
+        .replaceFirstMapped(
+          RegExp(r'([a-z])'),
+          (Match m) => m[1]!.toUpperCase(),
+        );
   }
 
   @override

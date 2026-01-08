@@ -19,14 +19,13 @@ class TriggerWordRepository {
     final String? jsonString = prefs.getString(_kTriggerConfigsKey);
     if (jsonString == null) {
       return [
-      return [
         TriggerConfig(
-          label: "Default", 
+          label: "Default",
           triggers: ["wordrop"],
           actions: [
             ActionInstance.create(ActionType.pauseMedia),
             ActionInstance.create(ActionType.vibrate),
-          ]
+          ],
         ),
       ];
     }
@@ -37,12 +36,12 @@ class TriggerWordRepository {
     } catch (e) {
       return [
         TriggerConfig(
-          label: "Default", 
+          label: "Default",
           triggers: ["wordrop"],
           actions: [
             ActionInstance.create(ActionType.pauseMedia),
             ActionInstance.create(ActionType.vibrate),
-          ]
+          ],
         ),
       ];
     }
@@ -72,9 +71,8 @@ class TriggerWordRepository {
 
   Future<void> addTriggerWord(String word) async {
     await addConfig(
-    await addConfig(
       TriggerConfig(
-        label: word, 
+        label: word,
         triggers: [word],
         actions: [ActionInstance.create(ActionType.vibrate)],
       ),
