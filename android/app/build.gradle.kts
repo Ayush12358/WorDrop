@@ -7,8 +7,8 @@ plugins {
 
 android {
     namespace = "com.ayush.wordrop"
-    compileSdk = flutter.compileSdkVersion
-    // ndkVersion = flutter.ndkVersion
+    compileSdk = 36 // Required by plugins
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -25,7 +25,7 @@ android {
         applicationId = "com.ayush.wordrop"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 30 // Required by vosk_flutter_2 (was flutter.minSdkVersion)
+        minSdk = 30 
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
