@@ -14,7 +14,8 @@ pre-commit:
       glob: "*.dart"
       run: flutter analyze --fatal-infos
 
-pre-push:
-  commands:
     test:
       run: flutter test
+
+    build:
+      run: flutter build apk --debug
