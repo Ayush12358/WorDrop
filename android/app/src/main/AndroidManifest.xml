@@ -49,21 +49,7 @@
             android:name="id.flutter.flutter_background_service.BackgroundService"
             android:foregroundServiceType="microphone" />
 
-        <!-- Digital Assistant Services -->
-        <service android:name=".WorDropVoiceInteractionService"
-            android:label="WorDrop Assistant"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true">
-            <meta-data android:name="android.voice_interaction"
-                android:resource="@xml/voice_interaction_service" />
-            <intent-filter>
-                <action android:name="android.service.voice.VoiceInteractionService" />
-            </intent-filter>
-        </service>
 
-        <service android:name=".WorDropVoiceInteractionSessionService"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true" />
 
         <service android:name=".WorDropRecognitionService"
             android:label="WorDrop Recognition"
