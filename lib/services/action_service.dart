@@ -4,7 +4,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:device_apps/device_apps.dart';
-import 'package:telephony/telephony.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'package:http/http.dart' as http;
@@ -22,7 +22,6 @@ import '../repositories/log_repository.dart';
 
 class ActionService {
   final TriggerWordRepository _triggerRepository = TriggerWordRepository();
-  final Telephony _telephony = Telephony.instance;
 
   static final ActionService _instance = ActionService._internal();
 
@@ -338,12 +337,15 @@ class ActionService {
 
       final fullMessage = "$message$locationSuffix";
 
-      // 2. Send SMS (Background)
-      await _telephony.sendSms(
-        to: phone,
-        message: fullMessage,
-        isMultipart: true,
+      // 2. Launch SMS app with pre-filled message
+      final smsUri = Uri(
+        scheme: 'sms',
+        path: phone,
+        queryParameters: {'body': fullMessage},
       );
+      if (await canLaunchUrl(smsUri)) {
+        await launchUrl(smsUri);
+      }
     } catch (_) {
       // print("SMS Failed");
     }
