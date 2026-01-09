@@ -62,15 +62,8 @@ class MainActivity : FlutterActivity() {
                  intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                  startActivity(intent)
                  result.success(true)
-            } else if (call.method == "isAssistantActive") {
-                val componentName = ComponentName(this, WorDropVoiceInteractionService::class.java)
-                val am = android.provider.Settings.Secure.getString(contentResolver, "voice_interaction_service")
-                result.success(am == componentName.flattenToString())
-            } else if (call.method == "openAssistantSettings") {
-                 val intent = Intent(android.provider.Settings.ACTION_VOICE_INPUT_SETTINGS)
-                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                 startActivity(intent)
-                 result.success(true)
+
+
             } else {
                 result.notImplemented()
             }
