@@ -86,24 +86,24 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _filteredApps.isEmpty
-          ? const Center(child: Text("No apps found"))
-          : ListView.builder(
-              itemCount: _filteredApps.length,
-              itemBuilder: (context, index) {
-                final app = _filteredApps[index];
-                return ListTile(
-                  leading: app is ApplicationWithIcon
-                      ? Image.memory(app.icon, width: 40, height: 40)
-                      : const Icon(Icons.android),
-                  title: Text(app.appName),
-                  subtitle: Text(app.packageName),
-                  onTap: () {
-                    // Return the package name
-                    Navigator.pop(context, app.packageName);
+              ? const Center(child: Text("No apps found"))
+              : ListView.builder(
+                  itemCount: _filteredApps.length,
+                  itemBuilder: (context, index) {
+                    final app = _filteredApps[index];
+                    return ListTile(
+                      leading: app is ApplicationWithIcon
+                          ? Image.memory(app.icon, width: 40, height: 40)
+                          : const Icon(Icons.android),
+                      title: Text(app.appName),
+                      subtitle: Text(app.packageName),
+                      onTap: () {
+                        // Return the package name
+                        Navigator.pop(context, app.packageName);
+                      },
+                    );
                   },
-                );
-              },
-            ),
+                ),
     );
   }
 }

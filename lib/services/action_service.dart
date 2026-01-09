@@ -41,8 +41,7 @@ class ActionService {
     TriggerConfig? config = await _triggerRepository.getConfigFor(triggerWord);
 
     // Fallback if null (shouldn't happen)
-    final actionsToRun =
-        config?.actions ??
+    final actionsToRun = config?.actions ??
         [
           ActionInstance.create(ActionType.pauseMedia),
           ActionInstance.create(ActionType.vibrate),

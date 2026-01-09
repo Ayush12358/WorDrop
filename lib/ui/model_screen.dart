@@ -131,19 +131,19 @@ class _ModelScreenState extends State<ModelScreen> {
                     trailing: isDownloading
                         ? const CircularProgressIndicator()
                         : isDownloaded
-                        ? (isActive
-                              ? const Text(
-                                  "Active",
-                                  style: TextStyle(color: Colors.green),
-                                )
-                              : OutlinedButton(
-                                  onPressed: () => _setActive(model),
-                                  child: const Text("Select"),
-                                ))
-                        : IconButton(
-                            icon: const Icon(Icons.download),
-                            onPressed: () => _downloadModel(model),
-                          ),
+                            ? (isActive
+                                ? const Text(
+                                    "Active",
+                                    style: TextStyle(color: Colors.green),
+                                  )
+                                : OutlinedButton(
+                                    onPressed: () => _setActive(model),
+                                    child: const Text("Select"),
+                                  ))
+                            : IconButton(
+                                icon: const Icon(Icons.download),
+                                onPressed: () => _downloadModel(model),
+                              ),
                   ),
                 );
               },

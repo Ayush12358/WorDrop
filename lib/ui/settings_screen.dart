@@ -80,9 +80,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Text(
               "Appearance",
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
           ),
           Padding(
@@ -120,9 +120,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? "Global Default Sensitivity"
                   : "Global Sensitivity",
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
           ),
           Padding(
@@ -159,7 +159,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-
           const Divider(),
           const Padding(
             padding: EdgeInsets.all(16.0),
@@ -227,7 +226,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-
           const Divider(),
           const Padding(
             padding: EdgeInsets.all(16.0),

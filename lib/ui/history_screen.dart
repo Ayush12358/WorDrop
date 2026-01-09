@@ -73,32 +73,32 @@ class _HistoryScreenState extends State<HistoryScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _logs.isEmpty
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.history, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text("No activity recorded yet."),
-                ],
-              ),
-            )
-          : ListView.builder(
-              itemCount: _logs.length,
-              itemBuilder: (context, index) {
-                final log = _logs[index];
-                return ListTile(
-                  leading: Icon(
-                    log.success ? Icons.check_circle : Icons.error,
-                    color: log.success ? Colors.green : Colors.red,
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.history, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text("No activity recorded yet."),
+                    ],
                   ),
-                  title: Text(log.triggerLabel),
-                  subtitle: Text(
-                    "${log.actionType} • ${DateFormat('MMM d, h:mm a').format(log.timestamp)}",
-                  ),
-                );
-              },
-            ),
+                )
+              : ListView.builder(
+                  itemCount: _logs.length,
+                  itemBuilder: (context, index) {
+                    final log = _logs[index];
+                    return ListTile(
+                      leading: Icon(
+                        log.success ? Icons.check_circle : Icons.error,
+                        color: log.success ? Colors.green : Colors.red,
+                      ),
+                      title: Text(log.triggerLabel),
+                      subtitle: Text(
+                        "${log.actionType} • ${DateFormat('MMM d, h:mm a').format(log.timestamp)}",
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }

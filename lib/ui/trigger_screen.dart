@@ -818,9 +818,7 @@ class _TriggerScreenState extends State<TriggerScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                ...config.actions
-                                    .take(5)
-                                    .map(
+                                ...config.actions.take(5).map(
                                       (a) => Padding(
                                         padding: const EdgeInsets.only(
                                           right: 6,

@@ -154,9 +154,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: FilledButton.icon(
                   onPressed: _toggleService,
                   style: FilledButton.styleFrom(
-                    backgroundColor: _isRunning
-                        ? colorScheme.error
-                        : colorScheme.primary,
+                    backgroundColor:
+                        _isRunning ? colorScheme.error : colorScheme.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),

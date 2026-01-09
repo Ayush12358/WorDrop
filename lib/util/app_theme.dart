@@ -19,7 +19,6 @@ class AppTheme {
       onPrimary: Colors.white,
     ),
     scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-
     appBarTheme: const AppBarTheme(
       backgroundColor: _primaryLight,
       foregroundColor: Colors.white,
@@ -42,7 +41,6 @@ class AppTheme {
       onPrimary: Colors.black,
     ),
     scaffoldBackgroundColor: const Color(0xFF121212),
-
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFF1F1F1F),
       foregroundColor: Colors.white,
