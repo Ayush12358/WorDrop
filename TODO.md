@@ -14,7 +14,7 @@ This file serves as the master list of completed work, active tasks, future road
 - [x] **Credits & Ident**: Added "About" section crediting **Ayush Maurya** and licensing info.
 - [x] **CI/CD Pipeline**: GitHub Actions now run `flutter test` and `flutter analyze` before building Release APKs.
 - [x] **Developer Tools**: `verify.bat` script for one-click local health checks.
-
+ 
 ### Phase 2.0: Connectivity & Safety
 **Focus:** Connecting the offline assistant to the outside world.
 - [x] **App Launcher**: Voice command to launch any installed app ("Launch Spotify").
