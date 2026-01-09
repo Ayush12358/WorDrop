@@ -40,7 +40,7 @@ dependencies:
   flutter_background_service:
   audio_session:
   dio: ^5.0.0
-  get_it: ^7.6.0
+  get_it: ^9.2.0
   archive:
   shared_preferences:
   vibration:
