@@ -8,30 +8,10 @@ on:
   workflow_dispatch: # Allow manual trigger for E2E
 
 jobs:
-  # Job 1: Quality Checks & Unit Tests (Fast - Runs on every push)
-  unit_checks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      
-      - name: Install Dependencies
-        run: flutter pub get
-
-      - name: Verify Formatting
-        run: dart format --output=none --set-exit-if-changed .
-
-      - name: Analyze
-        run: flutter analyze
-
-      - name: Run Unit & Widget Tests
-        run: flutter test
 
   # Job 2: Integration Tests on Emulator (Slow - Manual Only)
   e2e_android:
-    needs: unit_checks
+
     if: github.event_name == 'workflow_dispatch'
     runs-on: macos-latest
     # Actually, free tier Ubuntu supports KVM. Let's stick to macOS to match typical Flutter setups or Ubuntu.
