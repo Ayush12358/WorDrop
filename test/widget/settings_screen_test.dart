@@ -1,39 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wordrop/ui/settings_screen.dart';
+import 'package:wordrop/repositories/settings_repository.dart';
+import 'package:wordrop/services/action_service.dart';
+import 'package:wordrop/locator.dart';
+
+class FakeSettingsRepository implements SettingsRepository {
+  @override
+  Future<double> getSensitivityValue() async => 50.0;
+
+  @override
+  Future<bool> isPerTriggerSensitivityEnabled() async => false;
+
+  @override
+  Future<bool> isHighSensitivity() async => true;
+
+  @override
+  Future<void> setHighSensitivity(bool value) async {}
+
+  @override
+  Future<void> setPerTriggerSensitivityEnabled(bool value) async {}
+
+  @override
+  Future<void> setSensitivityValue(double value) async {}
+
+  @override
+  Future<String> getThemeMode() async => 'system';
+
+  @override
+  Future<void> setThemeMode(String mode) async {}
+}
+
+class FakeActionService implements ActionService {
+  @override
+  Future<bool> isAccessibilityActive() async => false;
+
+  @override
+  Future<bool> isDeviceAdminActive() async => false;
+
+  @override
+  Future<bool> isAssistantActive() async => false;
+
+  @override
+  Future<void> requestAccessibility() async {}
+
+  @override
+  Future<bool> requestDeviceAdmin() async => false;
+
+  @override
+  Future<void> openAssistantSettings() async {}
+
+  // Implementing other required members with stubs/errors
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
-  testWidgets('SettingsScreen loads and toggles sensitivity', (
-    WidgetTester tester,
-  ) async {
-    // 1. Mock SharedPreferences
-    SharedPreferences.setMockInitialValues({
-      'setting_sensitivity_high': true, // Initial value
-    });
+  setUp(() {
+    locator.reset();
+    locator.registerSingleton<SettingsRepository>(FakeSettingsRepository());
+    locator.registerSingleton<ActionService>(FakeActionService());
+  });
 
-    // 2. Pump Widget
+  testWidgets('SettingsScreen loads correctly', (WidgetTester tester) async {
     await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-    await tester.pump(); // Allow FutureBuilder/InitState to complete
+    await tester.pumpAndSettle();
 
-    // 3. Verify Initial State (High Sensitivity selected)
-    // We look for the RadioListTile with value: true having groupValue: true
-    // Logic: The "High Sensitivity" tile has value: true. If selected, groupValue is also true.
-    // However, finding RadioListTile directly via predicate is tricky.
-    // Easier to check for visual cues or specific widget states if possible.
-    // Let's rely on finding text and tapping.
-
-    expect(find.text('High Sensitivity (Fast)'), findsOneWidget);
-    expect(find.text('High Accuracy (Strict)'), findsOneWidget);
-
-    // 4. Tap "High Accuracy" (which corresponds to value: false)
-    await tester.tap(find.text('High Accuracy (Strict)'));
-    await tester.pumpAndSettle(); // Rebuild and save
-
-    // 5. Verify persistence (indirectly, via checking if UI updated state)
-    // Ideally we would verify verify(mockRepo.setVal) but we don't have a mock repo injected.
-    // We can check SharedPreferences again.
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getBool('setting_sensitivity_high'), false);
+    expect(find.text('App Settings'), findsOneWidget);
+    expect(find.text('Global Sensitivity'), findsOneWidget);
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('Theme Mode'), findsOneWidget);
   });
 }

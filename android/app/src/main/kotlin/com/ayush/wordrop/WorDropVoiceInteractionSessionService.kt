@@ -1,6 +1,5 @@
-package com.example.wordrop.wordrop
+package com.ayush.wordrop
 
-import android.service.voice.VoiceInteractionSession
 import android.service.voice.VoiceInteractionSessionService
 import android.os.Bundle
 

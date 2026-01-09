@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example.wordrop" "\0"
+            VALUE "CompanyName", "com.ayush.wordrop" "\0"
             VALUE "FileDescription", "wordrop" "\0"
-            VALUE "FileVersion", VERSION_AS_STRING "\0"
+            VALUE "FileVersion", "1.0.0.1" "\0"
             VALUE "InternalName", "wordrop" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example.wordrop. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.ayush.wordrop. All rights reserved." "\0"
             VALUE "OriginalFilename", "wordrop.exe" "\0"
             VALUE "ProductName", "wordrop" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

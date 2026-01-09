@@ -1,4 +1,4 @@
-package com.example.wordrop.wordrop
+package com.ayush.wordrop
 
 import android.speech.RecognitionService
 import android.content.Intent

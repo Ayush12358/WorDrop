@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import '../services/model_downloader_service.dart';
 
 class ModelScreen extends StatefulWidget {
@@ -10,90 +12,144 @@ class ModelScreen extends StatefulWidget {
 
 class _ModelScreenState extends State<ModelScreen> {
   final _modelService = ModelDownloaderService();
-  String? _modelPath;
-  bool _isDownloading = false;
+  String _activeModelName = ""; // Name of currently selected model
+  Map<String, bool> _downloadedStatus = {};
+  String? _downloadingModelName; // Which model is currently downloading
   double _progress = 0.0;
-  String _status = "Checking...";
+  String _status = "Checking models...";
 
   @override
   void initState() {
     super.initState();
-    _checkModel();
+    _checkModels();
   }
 
-  void _checkModel() async {
+  void _checkModels() async {
     final path = await _modelService.getModelPath();
+    final prefs = await SharedPreferences.getInstance();
+    final savedName = prefs.getString('selected_model');
+
+    final statusMap = <String, bool>{};
+    for (var m in ModelDownloaderService.availableModels) {
+      statusMap[m.name] = await _modelService.isModelDownloaded(m);
+    }
+
     setState(() {
-      _modelPath = path;
-      _status = path != null ? "Model Ready" : "Model Not Found";
+      _activeModelName =
+          savedName ?? ModelDownloaderService.availableModels[1].name;
+      _downloadedStatus = statusMap;
+      _status = path != null ? "Ready" : "Select a model";
     });
   }
 
-  void _downloadModel() async {
+  void _downloadModel(ModelInfo model) async {
+    if (_downloadingModelName != null) return; // Busy
+
     setState(() {
-      _isDownloading = true;
-      _status = "Downloading...";
+      _downloadingModelName = model.name;
+      _status = "Downloading ${model.name}...";
       _progress = 0;
     });
 
     try {
-      final path = await _modelService.downloadModel(
-        onProgress: (p) {
-          setState(() => _progress = p);
-        },
+      await _modelService.downloadModel(
+        model,
+        onProgress: (p) => setState(() => _progress = p),
       );
 
+      // Refresh state
+      _checkModels();
+
       setState(() {
-        _modelPath = path;
+        _downloadingModelName = null;
         _status = "Download Complete";
-        _isDownloading = false;
       });
     } catch (e) {
       setState(() {
         _status = "Error: $e";
-        _isDownloading = false;
+        _downloadingModelName = null;
       });
     }
+  }
+
+  void _setActive(ModelInfo model) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selected_model', model.name);
+    _checkModels(); // Refresh path
+
+    // Notify Background Service?
+    // In V1, getting model path happens on Service Start.
+    // So we might need to restart service or notify reload.
+    FlutterBackgroundService().invoke("stopService");
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Model switched. Restarting service...")),
+      );
+    }
+    await Future.delayed(const Duration(seconds: 1));
+    FlutterBackgroundService().startService();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Model')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Card(
-              child: ListTile(
-                title: const Text('English (Indian) Model'),
-                subtitle: Text('vosk-model-small-en-in-0.4'),
-                trailing: _modelPath != null
-                    ? const Icon(Icons.check_circle, color: Colors.green)
-                    : const Icon(Icons.error, color: Colors.red),
-              ),
+      appBar: AppBar(title: const Text('Manage Models')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              _status,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 20),
-            Text(_status),
-            const SizedBox(height: 20),
-            if (_isDownloading) LinearProgressIndicator(value: _progress),
+          ),
+          if (_downloadingModelName != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: LinearProgressIndicator(value: _progress),
+            ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: ModelDownloaderService.availableModels.length,
+              itemBuilder: (context, index) {
+                final model = ModelDownloaderService.availableModels[index];
+                final isDownloaded = _downloadedStatus[model.name] ?? false;
+                final isActive = model.name == _activeModelName;
+                final isDownloading = _downloadingModelName == model.name;
 
-            const SizedBox(height: 20),
-            if (_modelPath == null && !_isDownloading)
-              ElevatedButton.icon(
-                onPressed: _downloadModel,
-                icon: const Icon(Icons.download),
-                label: const Text('Download Model (36MB)'),
-              ),
-
-            if (_modelPath != null)
-              OutlinedButton.icon(
-                onPressed: _downloadModel, // Allow re-download if corrupted
-                icon: const Icon(Icons.refresh),
-                label: const Text('Re-download Model'),
-              ),
-          ],
-        ),
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: ListTile(
+                    title: Text(model.name),
+                    subtitle: Text(model.fileName),
+                    leading: isActive
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : const Icon(Icons.circle_outlined),
+                    trailing: isDownloading
+                        ? const CircularProgressIndicator()
+                        : isDownloaded
+                        ? (isActive
+                              ? const Text(
+                                  "Active",
+                                  style: TextStyle(color: Colors.green),
+                                )
+                              : OutlinedButton(
+                                  onPressed: () => _setActive(model),
+                                  child: const Text("Select"),
+                                ))
+                        : IconButton(
+                            icon: const Icon(Icons.download),
+                            onPressed: () => _downloadModel(model),
+                          ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -16,6 +16,9 @@ enum ActionType {
   fakeCall, // Future
   // Automation
   launchApp,
+  webhook,
+  audioRecord,
+  privacyWipe,
 }
 
 class ActionInstance {

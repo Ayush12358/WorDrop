@@ -8,7 +8,7 @@
 PRODUCT_NAME = wordrop
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.wordrop.wordrop
+PRODUCT_BUNDLE_IDENTIFIER = com.ayush.wordrop
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.example.wordrop. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.ayush.wordrop. All rights reserved.

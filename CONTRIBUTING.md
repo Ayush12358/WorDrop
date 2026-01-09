@@ -7,7 +7,7 @@ Thank you for your interest in contributing to WorDrop! We welcome contributions
 1.  **Fork the repository** on GitHub.
 2.  **Clone your fork** locally.
     ```bash
-    git clone https://github.com/YOUR_USERNAME/wordrop.git
+    git clone https://github.com/Ayush12358/wordrop.git
     cd wordrop
     ```
 3.  **Install dependencies**.
@@ -37,6 +37,32 @@ Thank you for your interest in contributing to WorDrop! We welcome contributions
 *   Use the **Bug Report** template for errors.
 *   Use the **Feature Request** template for new ideas.
 *   Please check existing issues to avoid duplicates.
+
+
+## Verification
+
+We have provided a convenience script to run formatting, analysis, and tests in one go.
+Before submitting a change, please run:
+
+```bat
+.\scripts\verify.bat
+```
+
+## Pre-commit Hooks (Optional)
+
+We use [Lefthook](https://github.com/evilmartians/lefthook) for local git hooks.
+
+```bash
+# Install lefthook (choose one)
+npm install -g lefthook   # via npm
+brew install lefthook     # via Homebrew (macOS)
+choco install lefthook    # via Chocolatey (Windows)
+
+# Activate hooks
+lefthook install
+```
+
+This will automatically run `dart format` and `flutter analyze` before every commit.
 
 ## License
 

@@ -4,11 +4,15 @@ class TriggerConfig {
   final String label;
   final List<String> triggers;
   final List<ActionInstance> actions;
+  final String? sensitivity; // 'fast', 'strict', 'default' or null
+  final bool allowWhenLocked;
 
   TriggerConfig({
     required this.label,
     required this.triggers,
     required this.actions,
+    this.sensitivity = 'default',
+    this.allowWhenLocked = true,
   });
 
   Map<String, dynamic> toJson() {
@@ -16,6 +20,8 @@ class TriggerConfig {
       'label': label,
       'triggers': triggers,
       'actions': actions.map((e) => e.toJson()).toList(),
+      'sensitivity': sensitivity,
+      'allowWhenLocked': allowWhenLocked,
     };
   }
 
@@ -30,6 +36,8 @@ class TriggerConfig {
     } else if (json['word'] != null) {
       triggers = [json['word'] as String];
     }
+
+    String? sensitivity = json['sensitivity'] as String? ?? 'default';
 
     // Actions Migration
     List<ActionInstance> actions = [];
@@ -50,18 +58,28 @@ class TriggerConfig {
       }
     }
 
-    return TriggerConfig(label: label, triggers: triggers, actions: actions);
+    return TriggerConfig(
+      label: label,
+      triggers: triggers,
+      actions: actions,
+      sensitivity: sensitivity,
+      allowWhenLocked: json['allowWhenLocked'] ?? true, // Default to true
+    );
   }
 
   TriggerConfig copyWith({
     String? label,
     List<String>? triggers,
     List<ActionInstance>? actions,
+    String? sensitivity,
+    bool? allowWhenLocked,
   }) {
     return TriggerConfig(
       label: label ?? this.label,
       triggers: triggers ?? this.triggers,
       actions: actions ?? this.actions,
+      sensitivity: sensitivity ?? this.sensitivity,
+      allowWhenLocked: allowWhenLocked ?? this.allowWhenLocked,
     );
   }
 }

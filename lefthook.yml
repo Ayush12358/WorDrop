@@ -1,0 +1,20 @@
+# Lefthook - Git hooks manager
+# Install: npm install -g lefthook && lefthook install
+# Or: brew install lefthook && lefthook install
+
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.dart"
+      run: dart format --set-exit-if-changed {staged_files}
+      stage_fixed: true
+
+    analyze:
+      glob: "*.dart"
+      run: flutter analyze --fatal-infos
+
+pre-push:
+  commands:
+    test:
+      run: flutter test

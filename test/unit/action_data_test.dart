@@ -5,7 +5,7 @@ void main() {
   group('ActionInstance', () {
     test('toJson and fromJson should be symmetric', () {
       final instance = ActionInstance.create(ActionType.launchApp, {
-        'package': 'com.example.app',
+        'package': 'com.ayush.wordrop',
       });
 
       final json = instance.toJson();

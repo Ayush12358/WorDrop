@@ -1,6 +1,6 @@
 # WorDrop - Offline Personal Safety & Automation
 
-![Build Status](https://img.shields.io/github/actions/workflow/status/your-username/wordrop/build.yml?branch=main)
+![Build Status](https://img.shields.io/github/actions/workflow/status/Ayush12358/wordrop/build.yml?branch=main)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
 
 WorDrop is an offline, privacy-first Android application designed for personal safety, privacy, and automation. It continuously listens for custom "trigger words" (hotwords) and executes a configurable set of actions when detected.
@@ -18,12 +18,13 @@ WorDrop is an offline, privacy-first Android application designed for personal s
     *   **Safety**: Loud siren (panic mode).
     *   **Automation**: Launch apps.
 *   **Sensitivity Control**: Choose between "Fast" (instant response) and "Strict" (high accuracy) modes.
+*   **Modern UI**: Beautiful Material 3 design with full **Dark Mode** support and a clean Grid Dashboard.
 
 ## Installation
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/your-username/wordrop.git
+    git clone https://github.com/Ayush12358/wordrop.git
     ```
 2.  Install dependencies:
     ```bash
@@ -38,8 +39,12 @@ WorDrop is an offline, privacy-first Android application designed for personal s
 
 1.  **Download Model**: On first launch, download the offline language model (approx. 50MB).
 2.  **Add Triggers**: Go to the "Trigger Categories" screen and add a new category (e.g., "Panic").
-3.  **Configure Actions**: Select the actions you want to happen when the trigger is heard (e.g., "Play Siren", "Flash Light").
-4.  **Add Aliases**: Add variations of the trigger word (e.g., "Help", "Emergency").
+3.  **Configure Actions**:
+        *   **App Launch**: Search for installed apps (e.g., "Spotify") to launch specific apps.
+        *   **Safety**: Select "Play Siren" or "Fake Call" for emergency scenarios.
+4.  **Sensitivity Control**:
+        *   **Global**: Set default sensitivity in *Settings*.
+        *   **Per-Trigger**: In *Settings*, enable "Per-Trigger Sensitivity", then customize each trigger (Fast/Strict) in the Edit dialog.
 5.  **Start Service**: Tap the central microphone button on the Home screen to start the background listening service.
 
 ## Permissions
@@ -56,7 +61,10 @@ WorDrop requires the following permissions to function:
 
 ### ✅ Phase 1: V1 Release (Current)
 - [x] **Core**: Offline Speech Recognition (Vosk), Background Service.
-- [x] **UI**: Trigger Management, Sensitivity Settings.
+- [x] **Smart Features**:
+        - [x] **Hot Reload**: Settings apply instantly.
+        - [x] **Smart App Launcher**: List/Search installed apps.
+        - [x] **Advanced Sensitivity**: Per-Trigger (Fast/Strict) configuration.
 - [x] **Actions**:
     - [x] Media Control (Pause).
     - [x] Haptics & Visual (Vibrate, Flash).
@@ -64,17 +72,21 @@ WorDrop requires the following permissions to function:
     - [x] Automation (Launch App).
 - [x] **Infrastructure**: CI/CD Workflows, Unit Tests.
 
-### 🚧 Revised V2: Advanced Safety & Accessibility (Next)
-- [ ] **Audio Record**: Stealthily record audio on trigger.
-- [ ] **Lock Device**: Lock screen immediately (requires Accessibility Service).
-- [ ] **Data Privacy Mode**: "Incognito" trigger that clears recent app history/keyboard cache.
+### ✅ Phase 2: V2.1 Release (Current)
+- [x] **Audio Record**: Stealthily record audio on trigger.
+- [x] **Lock Device**: Lock screen immediately (via Accessibility or Device Admin).
+- [x] **Data Privacy Mode**: "Incognito" trigger that clears `ActivityLogs`, clipboard, and stops service.
+- [x] **Robustness**: Comprehensive Unit Tests & CI Verification.
 
-### 🔮 Phase 3: Future & Community
+### 🔮 Phase 3: Future Ideas
 - [ ] **Two-Factor Trigger**: Require physical button combo + voice trigger.
 - [ ] **Smart Home Integration**: Local webhook calls (e.g., Home Assistant).
 - [ ] **Wear OS Companion**: Trigger from watch.
 
+## Credits
+
+*   **Developer**: [Ayush Maurya](https://github.com/Ayush12358) (Independent Developer)
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-

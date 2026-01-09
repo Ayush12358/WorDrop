@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   flutter_volume_controller
+  record_linux
   url_launcher_linux
 )
 

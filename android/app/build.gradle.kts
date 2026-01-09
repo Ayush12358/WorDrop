@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.wordrop.wordrop"
+    namespace = "com.ayush.wordrop"
     compileSdk = flutter.compileSdkVersion
     // ndkVersion = flutter.ndkVersion
 
@@ -22,7 +22,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.wordrop.wordrop"
+        applicationId = "com.ayush.wordrop"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 30 // Required by vosk_flutter_2 (was flutter.minSdkVersion)

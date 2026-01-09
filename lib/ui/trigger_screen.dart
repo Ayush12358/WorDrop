@@ -4,10 +4,12 @@ import 'package:vosk_flutter_2/vosk_flutter_2.dart';
 import 'dart:convert';
 import 'dart:async';
 import '../repositories/trigger_word_repository.dart';
+import '../repositories/settings_repository.dart';
 import '../services/model_downloader_service.dart';
 import '../services/background_service_manager.dart';
 import '../models/trigger_config.dart';
 import '../models/action_data.dart';
+import 'app_selection_screen.dart';
 
 class TriggerScreen extends StatefulWidget {
   const TriggerScreen({super.key});
@@ -18,13 +20,21 @@ class TriggerScreen extends StatefulWidget {
 
 class _TriggerScreenState extends State<TriggerScreen> {
   final _repository = TriggerWordRepository();
+  final _settingsRepository = SettingsRepository();
   List<TriggerConfig> _triggers = [];
+  bool _perTriggerEnabled = false;
   final _controller = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadTriggers();
+    _checkSettings();
+  }
+
+  void _checkSettings() async {
+    final enabled = await _settingsRepository.isPerTriggerSensitivityEnabled();
+    if (mounted) setState(() => _perTriggerEnabled = enabled);
   }
 
   void _loadTriggers() async {
@@ -148,6 +158,7 @@ class _TriggerScreenState extends State<TriggerScreen> {
     if (text.isNotEmpty) {
       // Create new config with Label = text, and initial Trigger = text
       await _repository.addTriggerWord(text); // Helper uses defaults
+      FlutterBackgroundService().invoke("reloadSettings");
       _controller.clear();
       _loadTriggers();
     }
@@ -155,6 +166,7 @@ class _TriggerScreenState extends State<TriggerScreen> {
 
   void _removeCategory(String label) async {
     await _repository.removeConfig(label);
+    FlutterBackgroundService().invoke("reloadSettings");
     _loadTriggers();
   }
 
@@ -187,6 +199,67 @@ class _TriggerScreenState extends State<TriggerScreen> {
                         onChanged: (v) => label = v,
                       ),
                       const Divider(),
+                      if (_perTriggerEnabled) ...[
+                        const Text(
+                          "Sensitivity Override",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        DropdownButton<String>(
+                          value: config.sensitivity ?? 'default',
+                          isExpanded: true,
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'default',
+                              child: Text("Global Default"),
+                            ),
+                            DropdownMenuItem(
+                              value: 'fast',
+                              child: Text("Fast (High Sensitivity)"),
+                            ),
+                            DropdownMenuItem(
+                              value: 'strict',
+                              child: Text("Strict (High Accuracy)"),
+                            ),
+                          ],
+                          onChanged: (val) async {
+                            if (val != null) {
+                              final newConfig = config.copyWith(
+                                sensitivity: val,
+                              );
+                              await _repository.addConfig(newConfig);
+                              FlutterBackgroundService().invoke(
+                                "reloadSettings",
+                              );
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                _editConfig(
+                                  newConfig,
+                                ); // Re-open with new value
+                              }
+                            }
+                          },
+                        ),
+                        const Divider(),
+                        SwitchListTile(
+                          title: const Text("Allow when Device Locked?"),
+                          subtitle: const Text(
+                            "If disabled, this trigger will be ignored while the screen is locked.",
+                          ),
+                          value: config.allowWhenLocked,
+                          onChanged: (val) async {
+                            final newConfig = config.copyWith(
+                              allowWhenLocked: val,
+                            );
+                            await _repository.addConfig(newConfig);
+                            FlutterBackgroundService().invoke("reloadSettings");
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              _editConfig(newConfig);
+                            }
+                          },
+                        ),
+                        const Divider(),
+                      ],
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -294,6 +367,7 @@ class _TriggerScreenState extends State<TriggerScreen> {
                       actions: actions,
                     );
                     await _repository.addConfig(newConfig);
+                    FlutterBackgroundService().invoke("reloadSettings");
                     if (context.mounted) {
                       Navigator.pop(context);
                       _loadTriggers();
@@ -325,6 +399,12 @@ class _TriggerScreenState extends State<TriggerScreen> {
                   _showAppSelectionDialog(context, onAdd);
                 } else if (type == ActionType.emergencySms) {
                   _showSmsDialog(context, onAdd);
+                } else if (type == ActionType.webhook) {
+                  _showWebhookDialog(context, onAdd);
+                } else if (type == ActionType.audioRecord) {
+                  onAdd(ActionInstance.create(ActionType.audioRecord));
+                } else if (type == ActionType.privacyWipe) {
+                  onAdd(ActionInstance.create(ActionType.privacyWipe));
                 } else {
                   onAdd(ActionInstance.create(type));
                 }
@@ -407,48 +487,121 @@ class _TriggerScreenState extends State<TriggerScreen> {
     );
   }
 
-  void _showAppSelectionDialog(
+  void _showWebhookDialog(
     BuildContext context,
     Function(ActionInstance) onAdd,
   ) {
-    final controller = TextEditingController();
+    String selectedMethod = "GET";
+    final urlController = TextEditingController();
+    final bodyController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          title: const Text("Enter App Package Name"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("e.g., com.spotify.music"),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(hintText: "Package Name"),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text("Configure Webhook"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: urlController,
+                      decoration: const InputDecoration(
+                        labelText: "URL",
+                        hintText: "https://api.example.com/trigger",
+                        prefixIcon: Icon(Icons.link),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                    const SizedBox(height: 10),
+                    InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: "Method",
+                        prefixIcon: Icon(Icons.http),
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedMethod,
+                          isExpanded: true,
+                          items: ["GET", "POST"]
+                              .map(
+                                (m) =>
+                                    DropdownMenuItem(value: m, child: Text(m)),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => selectedMethod = val);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: bodyController,
+                      decoration: const InputDecoration(
+                        labelText: "Body (JSON - Optional)",
+                        hintText: '{"key": "value"}',
+                        prefixIcon: Icon(Icons.code),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () {
-                if (controller.text.isNotEmpty) {
-                  onAdd(
-                    ActionInstance.create(ActionType.launchApp, {
-                      'package': controller.text.trim(),
-                    }),
-                  );
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text("Add"),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Cancel"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (urlController.text.isNotEmpty) {
+                      onAdd(
+                        ActionInstance.create(ActionType.webhook, {
+                          'url': urlController.text.trim(),
+                          'method': selectedMethod,
+                          'body': bodyController.text.isNotEmpty
+                              ? bodyController.text
+                              : null,
+                        }),
+                      );
+                      Navigator.pop(ctx);
+                    }
+                  },
+                  child: const Text("Add Webhook"),
+                ),
+              ],
+            );
+          },
         );
       },
     );
+  }
+
+  void _showAppSelectionDialog(
+    BuildContext context,
+    Function(ActionInstance) onAdd,
+  ) async {
+    // Navigate to new App Selection Screen
+    final packageName = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const AppSelectionScreen()),
+    );
+
+    if (packageName != null && packageName.isNotEmpty) {
+      onAdd(
+        ActionInstance.create(ActionType.launchApp, {'package': packageName}),
+      );
+    }
   }
 
   IconData _getActionIcon(ActionType type) {
@@ -473,6 +626,12 @@ class _TriggerScreenState extends State<TriggerScreen> {
         return Icons.call;
       case ActionType.launchApp:
         return Icons.apps;
+      case ActionType.webhook:
+        return Icons.webhook;
+      case ActionType.audioRecord:
+        return Icons.mic;
+      case ActionType.privacyWipe:
+        return Icons.cleaning_services; // or security
     }
   }
 
@@ -491,55 +650,194 @@ class _TriggerScreenState extends State<TriggerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Trigger Categories')),
+      appBar: AppBar(
+        title: const Text(
+          'My Triggers',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        foregroundColor: colorScheme.onSurface,
+      ),
       body: Column(
         children: [
-          Padding(
+          // --- Add Input ---
+          Container(
             padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(13),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'New Category Name (e.g. "Ayush")',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      hintText: 'New Trigger Group (e.g. "Panic")',
+                      filled: true,
+                      fillColor: colorScheme.surfaceContainerHighest.withAlpha(
+                        77,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton.filled(
+                FloatingActionButton.small(
                   onPressed: _addCategory,
-                  icon: const Icon(Icons.add),
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  child: const Icon(Icons.add),
                 ),
               ],
             ),
           ),
+
+          // --- Trigger List ---
           Expanded(
-            child: ListView.builder(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
               itemCount: _triggers.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final config = _triggers[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    child: Text(
-                      config.label.isNotEmpty
-                          ? config.label[0].toUpperCase()
-                          : "?",
+                return Dismissible(
+                  key: Key(config.label),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  title: Text(
-                    config.label,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    "${config.triggers.length} aliases • ${config.actions.length} Actions",
-                  ),
-                  onTap: () => _editConfig(config),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.grey),
-                    onPressed: () => _removeCategory(config.label),
+                  confirmDismiss: (_) async {
+                    _removeCategory(config.label);
+                    return false; // Let the robust function handle reload logic
+                  },
+                  child: Card(
+                    elevation: 0,
+                    color: colorScheme.surfaceContainerHighest.withAlpha(77),
+                    margin: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: colorScheme.outlineVariant.withAlpha(77),
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _editConfig(config),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  config.label,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.edit,
+                                  size: 18,
+                                  color: colorScheme.primary,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Aliases
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: config.triggers
+                                  .take(5)
+                                  .map(
+                                    (t) => Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.primary.withAlpha(
+                                          26,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        t,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: colorScheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+
+                            const SizedBox(height: 12),
+                            const Divider(height: 1),
+                            const SizedBox(height: 8),
+
+                            // Actions Preview
+                            Row(
+                              children: [
+                                Text(
+                                  "${config.actions.length} Actions:",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ...config.actions
+                                    .take(5)
+                                    .map(
+                                      (a) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 6,
+                                        ),
+                                        child: Icon(
+                                          _getActionIcon(a.type),
+                                          size: 16,
+                                          color: colorScheme.secondary,
+                                        ),
+                                      ),
+                                    ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 );
               },

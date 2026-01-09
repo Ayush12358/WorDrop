@@ -44,8 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/app/release
+*.jks
+*.keystore
+*.key
+.env
 
-# Local configuration
 local.properties
 
 # Logs
