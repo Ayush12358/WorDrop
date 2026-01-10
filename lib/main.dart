@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'locator.dart';
 import 'repositories/settings_repository.dart';
+import 'repositories/log_repository.dart';
 
 void main() async {
   runZonedGuarded(
@@ -13,13 +14,31 @@ void main() async {
       WidgetsFlutterBinding.ensureInitialized();
       setupLocator();
 
+      // Handle Flutter errors (layout, etc.)
+      FlutterError.onError = (FlutterErrorDetails details) {
+        FlutterError.presentError(details); // Dump to console
+        debugPrint(details.toString());
+        // Log to repository
+        try {
+          // Simple locator access might fail if not set up, but we are inside runZonedGuarded
+          if (locator.isRegistered<LogRepository>()) {
+            // Not strictly needed if we use LogRepository() directly or a simple singleton
+          }
+          // We can use the repository directly since it doesn't depend on complex initialization
+          LogRepository().logError(
+            "Flutter Error: ${details.exception}",
+            details.stack,
+          );
+        } catch (_) {}
+      };
+
       runApp(const WorDropApp());
     },
     (error, stack) {
-      // Error Reporting: Log to console for now.
-      // In future versions, this will connect to Firebase Crashlytics.
       debugPrint('Global Error Caught: $error');
-      debugPrint("Global Error: $error\n$stack");
+      try {
+        LogRepository().logError("Uncaught Exception: $error", stack);
+      } catch (_) {}
     },
   );
 }

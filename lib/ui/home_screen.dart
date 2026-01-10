@@ -17,12 +17,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isRunning = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // Add observer
     _requestPermissions();
     checkServiceStatus();
 
@@ -36,6 +37,19 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // Remove observer
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      checkServiceStatus(); // Check when app comes to foreground
+    }
   }
 
   Future<void> _requestPermissions() async {
@@ -54,24 +68,39 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void checkServiceStatus() async {
     final isRunning = await FlutterBackgroundService().isRunning();
-    setState(() {
-      _isRunning = isRunning;
-    });
+
+    if (mounted) {
+      setState(() {
+        _isRunning = isRunning;
+      });
+    }
   }
 
   void _toggleService() async {
     final service = BackgroundServiceManager();
+    final shouldBeRunning = !_isRunning;
+
     if (_isRunning) {
       await service.stop();
     } else {
       await service.start();
     }
-    // Give it a moment to update state
-    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Poll for state change (max 2 seconds)
+    int retries = 0;
+    bool isSynced = false;
+    while (!isSynced && retries < 20) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      final running = await FlutterBackgroundService().isRunning();
+      if (running == shouldBeRunning) {
+        isSynced = true;
+      }
+      retries++;
+    }
+
     checkServiceStatus();
   }
 
-  @override
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -218,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const TriggerScreen()),
-                    ),
+                    ).then((_) => checkServiceStatus()),
                   ),
                   _buildDashboardCard(
                     context,
@@ -248,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                    ),
+                    ).then((_) => checkServiceStatus()),
                   ),
                 ],
               ),

@@ -1,0 +1,6 @@
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.ayush.wordrop.WorDropVoiceInteractionSessionService"
+    android:recognitionService="com.ayush.wordrop.WorDropRecognitionService"
+    android:settingsActivity="com.ayush.wordrop.MainActivity"
+    android:supportsAssist="true"
+    android:supportsLocalInteraction="true" />

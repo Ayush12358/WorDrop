@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
+// ignore_for_file: avoid_print
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_background_service/flutter_background_service.dart';
 // import 'package:flutter_background_service_android/flutter_background_service_android.dart';
-// Note: flutter_background_service 5.0.0 changes import structure, checking docs might be needed.
-// Usually for 5.x it is just flutter_background_service.
 
 import 'package:vosk_flutter_2/vosk_flutter_2.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -16,6 +17,7 @@ import 'model_downloader_service.dart';
 import 'action_service.dart';
 import '../repositories/trigger_word_repository.dart';
 import '../repositories/settings_repository.dart';
+import '../repositories/log_repository.dart';
 
 // Top-level entry point
 @pragma('vm:entry-point')
@@ -29,126 +31,222 @@ StreamSubscription? _partialSubscription;
 StreamSubscription? _resultSubscription;
 
 @pragma('vm:entry-point')
-void onStart(ServiceInstance service) async {
-  DartPluginRegistrant.ensureInitialized();
+void onStart(ServiceInstance service) {
+  runZonedGuarded(() async {
+    DartPluginRegistrant.ensureInitialized();
 
-  if (service is AndroidServiceInstance) {
-    service.on('setAsForeground').listen((event) {
-      service.setAsForegroundService();
-    });
-    service.on('setAsBackground').listen((event) {
-      service.setAsBackgroundService();
-    });
-    service.on('stopActions').listen((event) async {
-      ActionService().stopAll();
-    });
-  }
-
-  // Initialize Repositories and Services
-  final modelService = ModelDownloaderService();
-  final triggerRepo = TriggerWordRepository();
-  final actionService = ActionService();
-  final settingsRepo = SettingsRepository();
-
-  // Load Model
-  final modelPath = await modelService.getModelPath();
-  if (modelPath == null) {
-    service.stopSelf();
-    return;
-  }
-
-  final vosk = VoskFlutterPlugin.instance();
-  final model = await vosk.createModel(modelPath);
-  final recognizer = await vosk.createRecognizer(
-    model: model,
-    sampleRate: 16000,
-  );
-
-  final speechService = await vosk.initSpeechService(recognizer);
-
-  // Helper function to reload config
-  Future<void> loadConfig() async {
-    _allConfigs = await triggerRepo.getConfigs();
-    _isHighSensitivity = await settingsRepo.isHighSensitivity();
-    _perTriggerEnabled = await settingsRepo.isPerTriggerSensitivityEnabled();
-
-    _fastTriggers.clear();
-    _strictTriggers.clear();
-    List<String> allTriggerWords = [];
-
-    for (var config in _allConfigs) {
-      allTriggerWords.addAll(config.triggers);
-
-      bool useFast = _isHighSensitivity; // Default global
-
-      if (_perTriggerEnabled) {
-        if (config.sensitivity == 'fast') useFast = true;
-        if (config.sensitivity == 'strict') useFast = false;
-      }
-
-      if (useFast) {
-        _fastTriggers.addAll(config.triggers);
-      } else {
-        _strictTriggers.addAll(config.triggers);
-      }
-    }
-
-    // Update Grammar
-    final grammarList = <String>[...allTriggerWords, "[unk]"];
-    recognizer.setGrammar(grammarList);
-
-    // Refresh Notification
-    if (service is AndroidServiceInstance &&
-        await service.isForegroundService()) {
-      service.setForegroundNotificationInfo(
-        title: "WorDrop Active",
-        content:
-            "Fast: ${_fastTriggers.length}, Strict: ${_strictTriggers.length}",
-      );
-    }
-
-    _setupListeners(speechService, actionService);
-
-    // Inject concurrency handlers for Audio Recording
-    actionService.onPauseRecognition = () async {
-      await speechService.cancel();
-      // print("Vosk Paused for Recording");
-    };
-
-    actionService.onResumeRecognition = () async {
-      await speechService.start();
-      // print("Vosk Resumed after Recording");
-    };
-  }
-
-  // Initial Load
-  await loadConfig();
-  await speechService.start();
-
-  // Listen for Reload
-  service.on('reloadSettings').listen((event) async {
-    // print("Reloading Settings...");
-    await loadConfig();
-  });
-
-  if (service is AndroidServiceInstance) {
-    service.on('stopService').listen((event) async {
-      await speechService.stop();
-      service.stopSelf();
-    });
-  }
-
-  // Keep alive / Periodic Update
-  Timer.periodic(const Duration(seconds: 10), (timer) async {
     if (service is AndroidServiceInstance) {
-      if (await service.isForegroundService()) {
+      service.on('setAsForeground').listen((event) {
+        service.setAsForegroundService();
+      });
+      service.on('setAsBackground').listen((event) {
+        service.setAsBackgroundService();
+      });
+      service.on('stopActions').listen((event) async {
+        ActionService().stopAll();
+      });
+    }
+
+    // Initialize Repositories and Services
+    final modelService = ModelDownloaderService();
+    final triggerRepo = TriggerWordRepository();
+    final actionService = ActionService();
+    final settingsRepo = SettingsRepository();
+
+    // 1. Ensure Model
+    await modelService.installBundledModel();
+    final modelPath = await modelService.getModelPath();
+    if (modelPath == null) {
+      service.stopSelf();
+      return;
+    }
+
+    final vosk = VoskFlutterPlugin.instance();
+    final model = await vosk.createModel(modelPath);
+
+    // State: Nullable to allow full recreation
+    Recognizer? recognizer;
+    SpeechService? speechService;
+    bool isStopping = false;
+
+    // Helper: Safely tear down active session
+    Future<void> stopSession() async {
+      try {
+        await speechService?.cancel();
+        await speechService?.dispose();
+      } catch (_) {}
+
+      try {
+        recognizer?.dispose();
+      } catch (_) {}
+
+      speechService = null;
+      recognizer = null;
+    }
+
+    // Register Stop Listener IMMEDIATELY
+    if (service is AndroidServiceInstance) {
+      service.on('stopService').listen((event) async {
+        isStopping = true;
+        print("Stopping service requested...");
+        await stopSession();
+        service.stopSelf();
+
+        // Ensure clean process exit to prevent orphans
+        if (Platform.isAndroid) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            exit(0);
+          });
+        }
+      });
+    }
+
+    // Helper: Build fresh session from config
+    Future<void> startSession() async {
+      if (isStopping) return;
+
+      // 1. Reload Config Data
+      _allConfigs = await triggerRepo.getConfigs();
+      _isHighSensitivity = await settingsRepo.isHighSensitivity();
+      _perTriggerEnabled = await settingsRepo.isPerTriggerSensitivityEnabled();
+
+      _fastTriggers.clear();
+      _strictTriggers.clear();
+      List<String> allTriggerWords = [];
+
+      for (var config in _allConfigs) {
+        allTriggerWords.addAll(config.triggers);
+        bool useFast = _isHighSensitivity;
+        if (_perTriggerEnabled) {
+          if (config.sensitivity == 'fast') useFast = true;
+          if (config.sensitivity == 'strict') useFast = false;
+        }
+        if (useFast) {
+          _fastTriggers.addAll(config.triggers);
+        } else {
+          _strictTriggers.addAll(config.triggers);
+        }
+      }
+
+      // 2. Create Grammar List
+      final grammarList = <String>[...allTriggerWords, "[unk]"];
+
+      if (isStopping) return;
+
+      // 3. Create Fresh Recognizer with Grammar
+      recognizer = await vosk.createRecognizer(
+        model: model,
+        sampleRate: 16000,
+        grammar: grammarList,
+      );
+
+      if (isStopping) {
+        recognizer?.dispose();
+        recognizer = null;
+        return;
+      }
+
+      // 4. Init SpeechService with Retry & Orphan Logic
+      int retryCount = 0;
+      while (retryCount < 3) {
+        if (isStopping) {
+          try {
+            recognizer?.dispose();
+          } catch (_) {}
+          print("Stopping during init. Forcing clean exit.");
+          exit(0);
+        }
+        try {
+          speechService = await vosk.initSpeechService(recognizer!);
+          break; // Success
+        } catch (e) {
+          if (e.toString().contains("already exist") ||
+              (e is PlatformException && e.code == 'INITIALIZE_FAIL')) {
+            retryCount++;
+            print(
+                "SpeechService already exists. Retrying in 1s... (Attempt $retryCount/3)");
+
+            if (isStopping) {
+              print("Stop requested during orphan state. Killing process.");
+              exit(0);
+            }
+
+            if (retryCount >= 3) {
+              print(
+                  "Critical: Orphan SpeechService persists. Killing process to cleanup.");
+              service.stopSelf();
+              exit(0);
+            }
+            await Future.delayed(const Duration(seconds: 1));
+          } else {
+            rethrow;
+          }
+        }
+      }
+
+      if (isStopping) {
+        await speechService?.dispose();
+        speechService = null;
+        recognizer?.dispose();
+        recognizer = null;
+        return;
+      }
+
+      // 5. Setup Listeners
+      _setupListeners(speechService!, actionService);
+
+      // 6. Config ActionService bridge
+      actionService.onPauseRecognition = () async {
+        await speechService?.cancel();
+      };
+      actionService.onResumeRecognition = () async {
+        await speechService?.start();
+      };
+
+      // 7. Update Notification (Android)
+      if (service is AndroidServiceInstance &&
+          await service.isForegroundService()) {
         service.setForegroundNotificationInfo(
           title: "WorDrop Active",
           content:
               "Fast: ${_fastTriggers.length}, Strict: ${_strictTriggers.length}",
         );
       }
+
+      // 8. START
+      if (!isStopping) {
+        await speechService!.start();
+      }
     }
+
+    // --- Lifecycle ---
+
+    // Initial Start
+    if (!isStopping) {
+      await startSession();
+    }
+
+    // Clear restart flag on start
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('restart_required', false);
+    } catch (_) {}
+
+    // Keep Alive / Notification Update
+    Timer.periodic(const Duration(seconds: 10), (timer) async {
+      if (service is AndroidServiceInstance &&
+          await service.isForegroundService()) {
+        service.setForegroundNotificationInfo(
+          title: "WorDrop Active",
+          content:
+              "Fast: ${_fastTriggers.length}, Strict: ${_strictTriggers.length}",
+        );
+      }
+    });
+  }, (error, stack) {
+    try {
+      LogRepository().logError("Background Service Error: $error", stack);
+    } catch (_) {}
   });
 }
 
@@ -174,8 +272,7 @@ void _setupListeners(SpeechService speechService, ActionService actionService) {
     });
   }
 
-  // Always listen to Result if there are Strict triggers (or just generally to handle flow)
-  // Even if no strict triggers, we might want to reset? But reset logic handles that.
+  // Always listen to Result if there are Strict triggers
   if (_strictTriggers.isNotEmpty) {
     _resultSubscription = speechService.onResult().listen((event) {
       try {
@@ -216,7 +313,6 @@ void _checkAndExecute(
         try {
           final bool isLocked = await channel.invokeMethod('isDeviceLocked');
           if (isLocked) {
-            // print("Trigger '$trigger' ignored because device is locked.");
             speechService.reset();
             return;
           }

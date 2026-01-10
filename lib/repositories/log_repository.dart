@@ -33,4 +33,17 @@ class LogRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kLogKey);
   }
+
+  Future<void> logError(String message, [StackTrace? stackTrace]) async {
+    final log = ActivityLog(
+      timestamp: DateTime.now(),
+      triggerLabel: "System Error",
+      actionType: "Error",
+      success: false,
+      details: message,
+      level: LogLevel.error,
+      stackTrace: stackTrace?.toString(),
+    );
+    await addLog(log);
+  }
 }

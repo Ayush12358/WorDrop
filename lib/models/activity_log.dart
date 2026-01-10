@@ -1,9 +1,13 @@
+enum LogLevel { info, warning, error }
+
 class ActivityLog {
   final DateTime timestamp;
   final String triggerLabel;
   final String actionType;
   final bool success;
   final String? details;
+  final LogLevel level;
+  final String? stackTrace;
 
   ActivityLog({
     required this.timestamp,
@@ -11,6 +15,8 @@ class ActivityLog {
     required this.actionType,
     required this.success,
     this.details,
+    this.level = LogLevel.info,
+    this.stackTrace,
   });
 
   Map<String, dynamic> toJson() {
@@ -20,6 +26,8 @@ class ActivityLog {
       'actionType': actionType,
       'success': success,
       'details': details,
+      'level': level.toString(),
+      'stackTrace': stackTrace,
     };
   }
 
@@ -30,6 +38,13 @@ class ActivityLog {
       actionType: json['actionType'] ?? 'Unknown',
       success: json['success'] ?? false,
       details: json['details'],
+      level: json['level'] != null
+          ? LogLevel.values.firstWhere(
+              (e) => e.toString() == json['level'],
+              orElse: () => LogLevel.info,
+            )
+          : LogLevel.info,
+      stackTrace: json['stackTrace'],
     );
   }
 }

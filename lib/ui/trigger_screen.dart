@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vosk_flutter_2/vosk_flutter_2.dart';
 import 'dart:convert';
 import 'dart:async';
@@ -49,9 +50,27 @@ class _TriggerScreenState extends State<TriggerScreen> {
     final service = FlutterBackgroundService();
     final wasRunning = await service.isRunning();
 
+    // 1. Stop Background Service if running
     if (wasRunning) {
       service.invoke('stopService');
-      await Future.delayed(const Duration(milliseconds: 1000));
+
+      // Poll for service stop (max 3 seconds)
+      int retries = 0;
+      while (await service.isRunning() && retries < 30) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        retries++;
+      }
+
+      // If still running after 3s, abort to prevent crash
+      if (await service.isRunning()) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text("Could not stop background service. Try again.")),
+          );
+        }
+        return null;
+      }
     }
 
     if (!mounted) return null;
@@ -64,42 +83,51 @@ class _TriggerScreenState extends State<TriggerScreen> {
       );
     }
 
+    VoskFlutterPlugin? vosk;
+    SpeechService? speechService;
+    StreamController<String>? textController;
+
     try {
       final modelPath = await ModelDownloaderService().getModelPath();
       if (modelPath == null) {
-        if (context.mounted) Navigator.pop(context);
+        if (context.mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text("No voice model found. Download one first.")),
+          );
+        }
         return null;
       }
 
-      final vosk = VoskFlutterPlugin.instance();
+      vosk = VoskFlutterPlugin.instance();
       final model = await vosk.createModel(modelPath);
       final recognizer = await vosk.createRecognizer(
         model: model,
         sampleRate: 16000,
       );
-      final speechService = await vosk.initSpeechService(recognizer);
+      speechService = await vosk.initSpeechService(recognizer);
 
       if (context.mounted) Navigator.pop(context); // Close loading
 
-      final StreamController<String> textController =
-          StreamController<String>();
+      textController = StreamController<String>();
       speechService.onPartial().listen((event) {
         try {
           final decoded = jsonDecode(event);
           final partial = decoded['partial'] as String;
           if (partial.isNotEmpty) {
-            textController.add(partial);
+            textController!.add(partial);
           }
         } catch (_) {}
       });
 
       await speechService.start();
 
-      if (!context.mounted) return null; // Check before dialog
+      if (!context.mounted) return null;
       final capturedText = await showDialog<String>(
         context: context,
         builder: (context) => StreamBuilder<String>(
-          stream: textController.stream,
+          stream: textController!.stream,
           initialData: "",
           builder: (context, snapshot) {
             final text = snapshot.data ?? "";
@@ -137,16 +165,24 @@ class _TriggerScreenState extends State<TriggerScreen> {
         ),
       );
 
-      await speechService.stop();
-      speechService.dispose();
-      textController.close();
-
       return capturedText;
     } catch (e) {
+      debugPrint("Voice Record Error: $e");
       return null;
     } finally {
+      // Cleanup
+      try {
+        await speechService?.stop();
+        speechService?.dispose();
+        textController?.close();
+      } catch (_) {}
+
+      // Restart Service if it was running
       if (wasRunning) {
         await BackgroundServiceManager().initialize();
+        // Give it a moment to boot
+        await Future.delayed(const Duration(milliseconds: 500));
+        await BackgroundServiceManager().start();
       }
     }
   }
@@ -156,9 +192,18 @@ class _TriggerScreenState extends State<TriggerScreen> {
   void _addCategory() async {
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
-      // Create new config with Label = text, and initial Trigger = text
-      await _repository.addTriggerWord(text); // Helper uses defaults
-      FlutterBackgroundService().invoke("reloadSettings");
+      await _repository.addTriggerWord(text);
+
+      final service = FlutterBackgroundService();
+      if (await service.isRunning()) {
+        service.invoke("stopService");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Service stopped to apply changes.")),
+          );
+        }
+      }
+
       _controller.clear();
       _loadTriggers();
     }
@@ -166,7 +211,17 @@ class _TriggerScreenState extends State<TriggerScreen> {
 
   void _removeCategory(String label) async {
     await _repository.removeConfig(label);
-    FlutterBackgroundService().invoke("reloadSettings");
+
+    final service = FlutterBackgroundService();
+    if (await service.isRunning()) {
+      service.invoke("stopService");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Service stopped to apply changes.")),
+        );
+      }
+    }
+
     _loadTriggers();
   }
 
@@ -227,9 +282,19 @@ class _TriggerScreenState extends State<TriggerScreen> {
                                 sensitivity: val,
                               );
                               await _repository.addConfig(newConfig);
-                              FlutterBackgroundService().invoke(
-                                "reloadSettings",
-                              );
+
+                              final service = FlutterBackgroundService();
+                              if (await service.isRunning()) {
+                                service.invoke("stopService");
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            "Service stopped to apply changes.")),
+                                  );
+                                }
+                              }
+
                               if (context.mounted) {
                                 Navigator.pop(context);
                                 _editConfig(
@@ -251,7 +316,19 @@ class _TriggerScreenState extends State<TriggerScreen> {
                               allowWhenLocked: val,
                             );
                             await _repository.addConfig(newConfig);
-                            FlutterBackgroundService().invoke("reloadSettings");
+
+                            final service = FlutterBackgroundService();
+                            if (await service.isRunning()) {
+                              service.invoke("stopService");
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          "Service stopped to apply changes.")),
+                                );
+                              }
+                            }
+
                             if (context.mounted) {
                               Navigator.pop(context);
                               _editConfig(newConfig);
@@ -367,7 +444,19 @@ class _TriggerScreenState extends State<TriggerScreen> {
                       actions: actions,
                     );
                     await _repository.addConfig(newConfig);
-                    FlutterBackgroundService().invoke("reloadSettings");
+
+                    final service = FlutterBackgroundService();
+                    if (await service.isRunning()) {
+                      service.invoke("stopService");
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content:
+                                  Text("Service stopped to apply changes.")),
+                        );
+                      }
+                    }
+
                     if (context.mounted) {
                       Navigator.pop(context);
                       _loadTriggers();
