@@ -39,7 +39,7 @@ dependencies:
   permission_handler:
   flutter_background_service:
   audio_session:
-  dio: ^5.0.0
+  dio: ^5.9.1
   get_it: ^7.6.0
   archive:
   shared_preferences: ^2.5.4
